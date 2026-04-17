@@ -157,10 +157,16 @@
             border: none;
             color: #72767d;
             cursor: pointer;
-            padding: 8px;
+            padding: 12px;
             border-radius: 4px;
             font-size: 16px;
+            min-width: 44px;
+            min-height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             transition: all 0.15s ease;
+            -webkit-tap-highlight-color: transparent;
         }
 
         .header-btn:hover {
@@ -396,14 +402,19 @@
                 top: 0;
                 left: 0;
                 height: 100vh;
-                z-index: 1000;
-                transform: translateX(-100%);
-                transition: transform 0.25s cubic-bezier(0.23, 1, 0.320, 1);
+                z-index: 1001;
+                transform: translate3d(-100%, 0, 0);
+                transition: transform 0.3s ease-in-out;
                 will-change: transform;
+                -webkit-transform: translate3d(-100%, 0, 0);
+                -webkit-transition: -webkit-transform 0.3s ease-in-out;
+                -webkit-backface-visibility: hidden;
+                backface-visibility: hidden;
             }
 
             .sidebar.open {
-                transform: translateX(0);
+                transform: translate3d(0, 0, 0);
+                -webkit-transform: translate3d(0, 0, 0);
             }
 
             .main-content {
@@ -458,6 +469,17 @@
             .welcome-message {
                 padding: 12px;
             }
+
+            .header-btn {
+                padding: 14px;
+                min-width: 48px;
+                min-height: 48px;
+                font-size: 18px;
+            }
+
+            .sidebar {
+                width: min(280px, 85vw);
+            }
         }
 
         /* Overlay for mobile sidebar */
@@ -468,16 +490,19 @@
             width: 100vw;
             height: 100vh;
             background-color: rgba(0, 0, 0, 0);
-            z-index: 999;
-            transition: background-color 0.25s cubic-bezier(0.23, 1, 0.320, 1);
+            z-index: 1000;
+            transition: background-color 0.3s ease-in-out, opacity 0.3s ease-in-out;
             visibility: hidden;
             opacity: 0;
+            pointer-events: none;
+            -webkit-tap-highlight-color: transparent;
         }
 
         .overlay.active {
             background-color: rgba(0, 0, 0, 0.5);
             visibility: visible;
             opacity: 1;
+            pointer-events: auto;
         }
     </style>
 </head>
@@ -558,7 +583,7 @@
             <div class="main-header">
                 <div class="channel-name" id="page-title">general</div>
                 <div class="header-actions">
-                    <button class="header-btn" onclick="toggleSidebar()">☰</button>
+                    <button class="header-btn" id="hamburger-btn">☰</button>
                     <button class="header-btn" onclick="showPage('settings')">⚙️</button>
                 </div>
             </div>
@@ -759,11 +784,32 @@
 
         // Sidebar toggle for mobile
         function toggleSidebar() {
+            console.log('toggleSidebar called'); // Debug log
             const sidebar = document.getElementById('sidebar');
             const overlay = document.querySelector('.overlay');
 
-            sidebar.classList.toggle('open');
-            overlay.classList.toggle('active');
+            if (!sidebar) {
+                console.error('Sidebar element not found!');
+                return;
+            }
+
+            if (!overlay) {
+                console.error('Overlay element not found!');
+                return;
+            }
+
+            // Use explicit class checks for better mobile compatibility
+            const isOpen = sidebar.classList.contains('open');
+
+            if (isOpen) {
+                sidebar.classList.remove('open');
+                overlay.classList.remove('active');
+            } else {
+                sidebar.classList.add('open');
+                overlay.classList.add('active');
+            }
+
+            console.log('Sidebar open class:', sidebar.classList.contains('open')); // Debug log
         }
 
         // Mobile navigation
@@ -843,6 +889,66 @@
             if (window.innerWidth > 768) {
                 sidebar.classList.remove('open');
                 overlay.classList.remove('active');
+            }
+        });
+
+        // DOM Ready - ensure event listeners are bound
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('DOM loaded, setting up event listeners');
+
+            // Bind hamburger button with unified event handling for mobile
+            const hamburgerBtn = document.getElementById('hamburger-btn');
+            if (hamburgerBtn) {
+                // Use touchstart for better mobile responsiveness
+                // Prevent both touch and click events from firing
+                let touchStarted = false;
+                let touchMoved = false;
+
+                hamburgerBtn.addEventListener('touchstart', function(e) {
+                    touchStarted = true;
+                    touchMoved = false;
+                    console.log('Hamburger button touch start');
+                }, { passive: false });
+
+                hamburgerBtn.addEventListener('touchmove', function(e) {
+                    touchMoved = true;
+                }, { passive: true });
+
+                hamburgerBtn.addEventListener('touchend', function(e) {
+                    if (touchStarted && !touchMoved) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        console.log('Hamburger button touched (end)');
+                        toggleSidebar();
+                    }
+                    setTimeout(() => {
+                        touchStarted = false;
+                        touchMoved = false;
+                    }, 100);
+                }, { passive: false });
+
+                hamburgerBtn.addEventListener('click', function(e) {
+                    if (touchStarted) {
+                        return; // Prevent double execution on mobile
+                    }
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log('Hamburger button clicked');
+                    toggleSidebar();
+                });
+            } else {
+                console.error('Hamburger button not found!');
+            }
+
+            // Bind overlay with touch support
+            const overlay = document.querySelector('.overlay');
+            if (overlay) {
+                overlay.addEventListener('click', function() {
+                    console.log('Overlay clicked');
+                    if (overlay.classList.contains('active')) {
+                        toggleSidebar();
+                    }
+                });
             }
         });
     </script>
